@@ -2219,3 +2219,75 @@ void init_win_context(void)
     pthread_mutex_init(&win_data_mutex, &attr);
     pthread_mutexattr_destroy(&attr);
 }
+
+/* ===== DXMT compatibility shim =====
+ * DXMT resolves "macdrv_functions" via dlsym(RTLD_DEFAULT) and reads
+ * win_data->client_cocoa_view. Wine 11.9 refactored macdrv_win_data (the old
+ * cocoa_view is gone; client_view replaces it), so return a struct in DXMT's
+ * expected 8.16-era layout. */
+struct dxmt_win_data
+{
+    HWND          hwnd;
+    macdrv_window cocoa_window;
+    macdrv_view   cocoa_view;
+    macdrv_view   client_cocoa_view;
+};
+
+static struct dxmt_win_data dxmt_wd;
+
+static struct dxmt_win_data *dxmt_get_win_data( HWND hwnd )
+{
+    struct macdrv_win_data *data = get_win_data( hwnd );
+    if (!data) return NULL;
+    /* Wine 11.9 only attaches a client view via a client surface; DXMT expects
+     * one to already exist. Create and attach one to the window on demand. */
+    if (!data->client_view && data->cocoa_window)
+    {
+        RECT rect;
+        macdrv_view view;
+        NtUserGetClientRect( hwnd, &rect, NtUserGetWinMonitorDpi( hwnd, MDT_RAW_DPI ) );
+        if ((view = macdrv_create_view( cgrect_from_rect( rect ) )))
+        {
+            macdrv_set_view_superview( view, NULL, data->cocoa_window, NULL, NULL );
+            macdrv_set_view_hidden( view, FALSE );
+            data->client_view = view;
+        }
+    }
+    dxmt_wd.hwnd = hwnd;
+    dxmt_wd.cocoa_window = data->cocoa_window;
+    dxmt_wd.cocoa_view = data->client_view;
+    dxmt_wd.client_cocoa_view = data->client_view;
+    release_win_data( data );
+    return &dxmt_wd;
+}
+
+static void dxmt_release_win_data( struct dxmt_win_data *data ) { (void)data; }
+
+struct dxmt_macdrv_functions
+{
+    void (*macdrv_init_display_devices)(BOOL);
+    struct dxmt_win_data *(*get_win_data)(HWND);
+    void (*release_win_data)(struct dxmt_win_data *);
+    macdrv_window (*macdrv_get_cocoa_window)(HWND, BOOL);
+    macdrv_metal_device (*macdrv_create_metal_device)(void);
+    void (*macdrv_release_metal_device)(macdrv_metal_device);
+    macdrv_metal_view (*macdrv_view_create_metal_view)(macdrv_view, macdrv_metal_device);
+    macdrv_metal_layer (*macdrv_view_get_metal_layer)(macdrv_metal_view);
+    void (*macdrv_view_release_metal_view)(macdrv_metal_view);
+    void (*on_main_thread)(void *);
+};
+
+__attribute__((visibility("default")))
+struct dxmt_macdrv_functions macdrv_functions =
+{
+    NULL,
+    dxmt_get_win_data,
+    dxmt_release_win_data,
+    macdrv_get_cocoa_window,
+    macdrv_create_metal_device,
+    macdrv_release_metal_device,
+    macdrv_view_create_metal_view,
+    macdrv_view_get_metal_layer,
+    macdrv_view_release_metal_view,
+    NULL,
+};
