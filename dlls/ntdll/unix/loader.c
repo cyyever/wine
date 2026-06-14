@@ -1342,7 +1342,7 @@ NTSTATUS load_unixlib_by_name( const UNICODE_STRING *nt_name, void **handle_ret 
     {
         ptr = prepend_build_dir_path( file + pos, ".so", "", "/dlls", build_dir );
         strcpy( ext, ".so" );
-        if ((handle = dlopen( ptr, RTLD_NOW ))) goto done;
+        if ((handle = dlopen( ptr, RTLD_NOW | RTLD_GLOBAL ))) goto done;
     }
 
     strcpy( ext, ".so" );
@@ -1350,10 +1350,10 @@ NTSTATUS load_unixlib_by_name( const UNICODE_STRING *nt_name, void **handle_ret 
     {
         ptr = prepend( file + pos, so_dir, strlen(so_dir) );
         ptr = prepend( ptr, dll_paths[i], strlen(dll_paths[i]) );
-        if ((handle = dlopen( ptr, RTLD_NOW ))) goto done;
+        if ((handle = dlopen( ptr, RTLD_NOW | RTLD_GLOBAL ))) goto done;
 
         ptr = prepend( file + pos, dll_paths[i], strlen(dll_paths[i]) );
-        if ((handle = dlopen( ptr, RTLD_NOW ))) goto done;
+        if ((handle = dlopen( ptr, RTLD_NOW | RTLD_GLOBAL ))) goto done;
     }
 
  done:
