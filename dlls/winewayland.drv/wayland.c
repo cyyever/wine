@@ -200,6 +200,16 @@ static void registry_handle_global(void *data, struct wl_registry *registry,
             wl_registry_bind(registry, id, &wp_cursor_shape_manager_v1_interface,
                              version < 2 ? version : 2);
     }
+    else if (strcmp(interface, "wp_pointer_warp_v1") == 0)
+    {
+        process_wayland.wp_pointer_warp_v1 =
+            wl_registry_bind(registry, id, &wp_pointer_warp_v1_interface, 1);
+    }
+    else if (strcmp(interface, "wp_alpha_modifier_v1") == 0)
+    {
+        process_wayland.wp_alpha_modifier_v1 =
+            wl_registry_bind(registry, id, &wp_alpha_modifier_v1_interface, 1);
+    }
 }
 
 static void registry_handle_global_remove(void *data, struct wl_registry *registry,

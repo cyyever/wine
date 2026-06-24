@@ -4,7 +4,6 @@
  * by the following copyright and permission notice:
  *
  * Copyright 2015-2026 The Khronos Group Inc.
- *
  * SPDX-License-Identifier: Apache-2.0 OR MIT
  *
  * and from Vulkan video.xml file covered
@@ -319,6 +318,30 @@ void WINAPI vkCmdBeginDebugUtilsLabelEXT(VkCommandBuffer commandBuffer, const Vk
     params.commandBuffer = commandBuffer;
     params.pLabelInfo = pLabelInfo;
     UNIX_CALL(vkCmdBeginDebugUtilsLabelEXT, &params);
+}
+
+VkResult WINAPI vkCmdBeginGpaSampleAMD(VkCommandBuffer commandBuffer, VkGpaSessionAMD gpaSession, const VkGpaSampleBeginInfoAMD *pGpaSampleBeginInfo, uint32_t *pSampleID)
+{
+    struct vkCmdBeginGpaSampleAMD_params params;
+    NTSTATUS status;
+    params.commandBuffer = commandBuffer;
+    params.gpaSession = gpaSession;
+    params.pGpaSampleBeginInfo = pGpaSampleBeginInfo;
+    params.pSampleID = pSampleID;
+    status = UNIX_CALL(vkCmdBeginGpaSampleAMD, &params);
+    assert(!status && "vkCmdBeginGpaSampleAMD");
+    return params.result;
+}
+
+VkResult WINAPI vkCmdBeginGpaSessionAMD(VkCommandBuffer commandBuffer, VkGpaSessionAMD gpaSession)
+{
+    struct vkCmdBeginGpaSessionAMD_params params;
+    NTSTATUS status;
+    params.commandBuffer = commandBuffer;
+    params.gpaSession = gpaSession;
+    status = UNIX_CALL(vkCmdBeginGpaSessionAMD, &params);
+    assert(!status && "vkCmdBeginGpaSessionAMD");
+    return params.result;
 }
 
 void WINAPI vkCmdBeginPerTileExecutionQCOM(VkCommandBuffer commandBuffer, const VkPerTileBeginInfoQCOM *pPerTileBeginInfo)
@@ -890,6 +913,14 @@ void WINAPI vkCmdCopyBufferToImage2KHR(VkCommandBuffer commandBuffer, const VkCo
     params.commandBuffer = commandBuffer;
     params.pCopyBufferToImageInfo = pCopyBufferToImageInfo;
     UNIX_CALL(vkCmdCopyBufferToImage2KHR, &params);
+}
+
+void WINAPI vkCmdCopyGpaSessionResultsAMD(VkCommandBuffer commandBuffer, VkGpaSessionAMD gpaSession)
+{
+    struct vkCmdCopyGpaSessionResultsAMD_params params;
+    params.commandBuffer = commandBuffer;
+    params.gpaSession = gpaSession;
+    UNIX_CALL(vkCmdCopyGpaSessionResultsAMD, &params);
 }
 
 void WINAPI vkCmdCopyImage(VkCommandBuffer commandBuffer, VkImage srcImage, VkImageLayout srcImageLayout, VkImage dstImage, VkImageLayout dstImageLayout, uint32_t regionCount, const VkImageCopy *pRegions)
@@ -1554,6 +1585,26 @@ void WINAPI vkCmdEndDebugUtilsLabelEXT(VkCommandBuffer commandBuffer)
     struct vkCmdEndDebugUtilsLabelEXT_params params;
     params.commandBuffer = commandBuffer;
     UNIX_CALL(vkCmdEndDebugUtilsLabelEXT, &params);
+}
+
+void WINAPI vkCmdEndGpaSampleAMD(VkCommandBuffer commandBuffer, VkGpaSessionAMD gpaSession, uint32_t sampleID)
+{
+    struct vkCmdEndGpaSampleAMD_params params;
+    params.commandBuffer = commandBuffer;
+    params.gpaSession = gpaSession;
+    params.sampleID = sampleID;
+    UNIX_CALL(vkCmdEndGpaSampleAMD, &params);
+}
+
+VkResult WINAPI vkCmdEndGpaSessionAMD(VkCommandBuffer commandBuffer, VkGpaSessionAMD gpaSession)
+{
+    struct vkCmdEndGpaSessionAMD_params params;
+    NTSTATUS status;
+    params.commandBuffer = commandBuffer;
+    params.gpaSession = gpaSession;
+    status = UNIX_CALL(vkCmdEndGpaSessionAMD, &params);
+    assert(!status && "vkCmdEndGpaSessionAMD");
+    return params.result;
 }
 
 void WINAPI vkCmdEndPerTileExecutionQCOM(VkCommandBuffer commandBuffer, const VkPerTileEndInfoQCOM *pPerTileEndInfo)
@@ -2375,6 +2426,14 @@ void WINAPI vkCmdSetDiscardRectangleModeEXT(VkCommandBuffer commandBuffer, VkDis
     UNIX_CALL(vkCmdSetDiscardRectangleModeEXT, &params);
 }
 
+void WINAPI vkCmdSetDispatchParametersARM(VkCommandBuffer commandBuffer, const VkDispatchParametersARM *pDispatchParameters)
+{
+    struct vkCmdSetDispatchParametersARM_params params;
+    params.commandBuffer = commandBuffer;
+    params.pDispatchParameters = pDispatchParameters;
+    UNIX_CALL(vkCmdSetDispatchParametersARM, &params);
+}
+
 void WINAPI vkCmdSetEvent(VkCommandBuffer commandBuffer, VkEvent event, VkPipelineStageFlags stageMask)
 {
     struct vkCmdSetEvent_params params;
@@ -2594,6 +2653,14 @@ void WINAPI vkCmdSetPrimitiveRestartEnableEXT(VkCommandBuffer commandBuffer, VkB
     params.commandBuffer = commandBuffer;
     params.primitiveRestartEnable = primitiveRestartEnable;
     UNIX_CALL(vkCmdSetPrimitiveRestartEnableEXT, &params);
+}
+
+void WINAPI vkCmdSetPrimitiveRestartIndexEXT(VkCommandBuffer commandBuffer, uint32_t primitiveRestartIndex)
+{
+    struct vkCmdSetPrimitiveRestartIndexEXT_params params;
+    params.commandBuffer = commandBuffer;
+    params.primitiveRestartIndex = primitiveRestartIndex;
+    UNIX_CALL(vkCmdSetPrimitiveRestartIndexEXT, &params);
 }
 
 void WINAPI vkCmdSetPrimitiveTopology(VkCommandBuffer commandBuffer, VkPrimitiveTopology primitiveTopology)
@@ -3564,6 +3631,19 @@ VkResult WINAPI vkCreateFramebuffer(VkDevice device, const VkFramebufferCreateIn
     return params.result;
 }
 
+VkResult WINAPI vkCreateGpaSessionAMD(VkDevice device, const VkGpaSessionCreateInfoAMD *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkGpaSessionAMD *pGpaSession)
+{
+    struct vkCreateGpaSessionAMD_params params;
+    NTSTATUS status;
+    params.device = device;
+    params.pCreateInfo = pCreateInfo;
+    params.pAllocator = pAllocator;
+    params.pGpaSession = pGpaSession;
+    status = UNIX_CALL(vkCreateGpaSessionAMD, &params);
+    assert(!status && "vkCreateGpaSessionAMD");
+    return params.result;
+}
+
 VkResult WINAPI vkCreateGraphicsPipelines(VkDevice device, VkPipelineCache pipelineCache, uint32_t createInfoCount, const VkGraphicsPipelineCreateInfo *pCreateInfos, const VkAllocationCallbacks *pAllocator, VkPipeline *pPipelines)
 {
     struct vkCreateGraphicsPipelines_params params;
@@ -4237,6 +4317,17 @@ void WINAPI vkDestroyFramebuffer(VkDevice device, VkFramebuffer framebuffer, con
     assert(!status && "vkDestroyFramebuffer");
 }
 
+void WINAPI vkDestroyGpaSessionAMD(VkDevice device, VkGpaSessionAMD gpaSession, const VkAllocationCallbacks *pAllocator)
+{
+    struct vkDestroyGpaSessionAMD_params params;
+    NTSTATUS status;
+    params.device = device;
+    params.gpaSession = gpaSession;
+    params.pAllocator = pAllocator;
+    status = UNIX_CALL(vkDestroyGpaSessionAMD, &params);
+    assert(!status && "vkDestroyGpaSessionAMD");
+}
+
 void WINAPI vkDestroyImage(VkDevice device, VkImage image, const VkAllocationCallbacks *pAllocator)
 {
     struct vkDestroyImage_params params;
@@ -4737,7 +4828,7 @@ VkResult WINAPI vkGetAccelerationStructureHandleNV(VkDevice device, VkAccelerati
     return params.result;
 }
 
-void WINAPI vkGetAccelerationStructureMemoryRequirementsNV(VkDevice device, const VkAccelerationStructureMemoryRequirementsInfoNV *pInfo, VkMemoryRequirements2KHR *pMemoryRequirements)
+void WINAPI vkGetAccelerationStructureMemoryRequirementsNV(VkDevice device, const VkAccelerationStructureMemoryRequirementsInfoNV *pInfo, VkMemoryRequirements2 *pMemoryRequirements)
 {
     struct vkGetAccelerationStructureMemoryRequirementsNV_params params;
     NTSTATUS status;
@@ -5093,6 +5184,17 @@ uint64_t WINAPI vkGetDeviceCombinedImageSamplerIndexNVX(VkDevice device, uint64_
     return params.result;
 }
 
+VkResult WINAPI vkGetDeviceFaultDebugInfoKHR(VkDevice device, VkDeviceFaultDebugInfoKHR *pDebugInfo)
+{
+    struct vkGetDeviceFaultDebugInfoKHR_params params;
+    NTSTATUS status;
+    params.device = device;
+    params.pDebugInfo = pDebugInfo;
+    status = UNIX_CALL(vkGetDeviceFaultDebugInfoKHR, &params);
+    assert(!status && "vkGetDeviceFaultDebugInfoKHR");
+    return params.result;
+}
+
 VkResult WINAPI vkGetDeviceFaultInfoEXT(VkDevice device, VkDeviceFaultCountsEXT *pFaultCounts, VkDeviceFaultInfoEXT *pFaultInfo)
 {
     struct vkGetDeviceFaultInfoEXT_params params;
@@ -5102,6 +5204,19 @@ VkResult WINAPI vkGetDeviceFaultInfoEXT(VkDevice device, VkDeviceFaultCountsEXT 
     params.pFaultInfo = pFaultInfo;
     status = UNIX_CALL(vkGetDeviceFaultInfoEXT, &params);
     assert(!status && "vkGetDeviceFaultInfoEXT");
+    return params.result;
+}
+
+VkResult WINAPI vkGetDeviceFaultReportsKHR(VkDevice device, uint64_t timeout, uint32_t *pFaultCounts, VkDeviceFaultInfoKHR *pFaultInfo)
+{
+    struct vkGetDeviceFaultReportsKHR_params params;
+    NTSTATUS status;
+    params.device = device;
+    params.timeout = timeout;
+    params.pFaultCounts = pFaultCounts;
+    params.pFaultInfo = pFaultInfo;
+    status = UNIX_CALL(vkGetDeviceFaultReportsKHR, &params);
+    assert(!status && "vkGetDeviceFaultReportsKHR");
     return params.result;
 }
 
@@ -5405,6 +5520,42 @@ void WINAPI vkGetGeneratedCommandsMemoryRequirementsNV(VkDevice device, const Vk
     params.pMemoryRequirements = pMemoryRequirements;
     status = UNIX_CALL(vkGetGeneratedCommandsMemoryRequirementsNV, &params);
     assert(!status && "vkGetGeneratedCommandsMemoryRequirementsNV");
+}
+
+VkResult WINAPI vkGetGpaDeviceClockInfoAMD(VkDevice device, VkGpaDeviceGetClockInfoAMD *pInfo)
+{
+    struct vkGetGpaDeviceClockInfoAMD_params params;
+    NTSTATUS status;
+    params.device = device;
+    params.pInfo = pInfo;
+    status = UNIX_CALL(vkGetGpaDeviceClockInfoAMD, &params);
+    assert(!status && "vkGetGpaDeviceClockInfoAMD");
+    return params.result;
+}
+
+VkResult WINAPI vkGetGpaSessionResultsAMD(VkDevice device, VkGpaSessionAMD gpaSession, uint32_t sampleID, size_t *pSizeInBytes, void *pData)
+{
+    struct vkGetGpaSessionResultsAMD_params params;
+    NTSTATUS status;
+    params.device = device;
+    params.gpaSession = gpaSession;
+    params.sampleID = sampleID;
+    params.pSizeInBytes = pSizeInBytes;
+    params.pData = pData;
+    status = UNIX_CALL(vkGetGpaSessionResultsAMD, &params);
+    assert(!status && "vkGetGpaSessionResultsAMD");
+    return params.result;
+}
+
+VkResult WINAPI vkGetGpaSessionStatusAMD(VkDevice device, VkGpaSessionAMD gpaSession)
+{
+    struct vkGetGpaSessionStatusAMD_params params;
+    NTSTATUS status;
+    params.device = device;
+    params.gpaSession = gpaSession;
+    status = UNIX_CALL(vkGetGpaSessionStatusAMD, &params);
+    assert(!status && "vkGetGpaSessionStatusAMD");
+    return params.result;
 }
 
 void WINAPI vkGetImageMemoryRequirements(VkDevice device, VkImage image, VkMemoryRequirements *pMemoryRequirements)
@@ -6063,6 +6214,34 @@ void WINAPI vkGetPhysicalDeviceProperties2KHR(VkPhysicalDevice physicalDevice, V
     assert(!status && "vkGetPhysicalDeviceProperties2KHR");
 }
 
+VkResult WINAPI vkGetPhysicalDeviceQueueFamilyDataGraphEngineOperationPropertiesARM(VkPhysicalDevice physicalDevice, uint32_t queueFamilyIndex, const VkQueueFamilyDataGraphPropertiesARM *pQueueFamilyDataGraphProperties, VkBaseOutStructure *pProperties)
+{
+    struct vkGetPhysicalDeviceQueueFamilyDataGraphEngineOperationPropertiesARM_params params;
+    NTSTATUS status;
+    params.physicalDevice = physicalDevice;
+    params.queueFamilyIndex = queueFamilyIndex;
+    params.pQueueFamilyDataGraphProperties = pQueueFamilyDataGraphProperties;
+    params.pProperties = pProperties;
+    status = UNIX_CALL(vkGetPhysicalDeviceQueueFamilyDataGraphEngineOperationPropertiesARM, &params);
+    assert(!status && "vkGetPhysicalDeviceQueueFamilyDataGraphEngineOperationPropertiesARM");
+    return params.result;
+}
+
+VkResult WINAPI vkGetPhysicalDeviceQueueFamilyDataGraphOpticalFlowImageFormatsARM(VkPhysicalDevice physicalDevice, uint32_t queueFamilyIndex, const VkQueueFamilyDataGraphPropertiesARM *pQueueFamilyDataGraphProperties, const VkDataGraphOpticalFlowImageFormatInfoARM *pOpticalFlowImageFormatInfo, uint32_t *pFormatCount, VkDataGraphOpticalFlowImageFormatPropertiesARM *pImageFormatProperties)
+{
+    struct vkGetPhysicalDeviceQueueFamilyDataGraphOpticalFlowImageFormatsARM_params params;
+    NTSTATUS status;
+    params.physicalDevice = physicalDevice;
+    params.queueFamilyIndex = queueFamilyIndex;
+    params.pQueueFamilyDataGraphProperties = pQueueFamilyDataGraphProperties;
+    params.pOpticalFlowImageFormatInfo = pOpticalFlowImageFormatInfo;
+    params.pFormatCount = pFormatCount;
+    params.pImageFormatProperties = pImageFormatProperties;
+    status = UNIX_CALL(vkGetPhysicalDeviceQueueFamilyDataGraphOpticalFlowImageFormatsARM, &params);
+    assert(!status && "vkGetPhysicalDeviceQueueFamilyDataGraphOpticalFlowImageFormatsARM");
+    return params.result;
+}
+
 void WINAPI vkGetPhysicalDeviceQueueFamilyDataGraphProcessingEnginePropertiesARM(VkPhysicalDevice physicalDevice, const VkPhysicalDeviceQueueFamilyDataGraphProcessingEngineInfoARM *pQueueFamilyDataGraphProcessingEngineInfo, VkQueueFamilyDataGraphProcessingEnginePropertiesARM *pQueueFamilyDataGraphProcessingEngineProperties)
 {
     struct vkGetPhysicalDeviceQueueFamilyDataGraphProcessingEnginePropertiesARM_params params;
@@ -6431,7 +6610,7 @@ VkResult WINAPI vkGetPipelineKeyKHR(VkDevice device, const VkPipelineCreateInfoK
     return params.result;
 }
 
-VkResult WINAPI vkGetPipelinePropertiesEXT(VkDevice device, const VkPipelineInfoEXT *pPipelineInfo, VkBaseOutStructure *pPipelineProperties)
+VkResult WINAPI vkGetPipelinePropertiesEXT(VkDevice device, const VkPipelineInfoKHR *pPipelineInfo, VkBaseOutStructure *pPipelineProperties)
 {
     struct vkGetPipelinePropertiesEXT_params params;
     NTSTATUS status;
@@ -7009,6 +7188,17 @@ VkResult WINAPI vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR *pPresen
     return params.result;
 }
 
+VkResult WINAPI vkQueueSetPerfHintQCOM(VkQueue queue, const VkPerfHintInfoQCOM *pPerfHintInfo)
+{
+    struct vkQueueSetPerfHintQCOM_params params;
+    NTSTATUS status;
+    params.queue = queue;
+    params.pPerfHintInfo = pPerfHintInfo;
+    status = UNIX_CALL(vkQueueSetPerfHintQCOM, &params);
+    assert(!status && "vkQueueSetPerfHintQCOM");
+    return params.result;
+}
+
 VkResult WINAPI vkQueueSetPerformanceConfigurationINTEL(VkQueue queue, VkPerformanceConfigurationINTEL configuration)
 {
     struct vkQueueSetPerformanceConfigurationINTEL_params params;
@@ -7194,6 +7384,17 @@ VkResult WINAPI vkResetFences(VkDevice device, uint32_t fenceCount, const VkFenc
     return params.result;
 }
 
+VkResult WINAPI vkResetGpaSessionAMD(VkDevice device, VkGpaSessionAMD gpaSession)
+{
+    struct vkResetGpaSessionAMD_params params;
+    NTSTATUS status;
+    params.device = device;
+    params.gpaSession = gpaSession;
+    status = UNIX_CALL(vkResetGpaSessionAMD, &params);
+    assert(!status && "vkResetGpaSessionAMD");
+    return params.result;
+}
+
 void WINAPI vkResetQueryPool(VkDevice device, VkQueryPool queryPool, uint32_t firstQuery, uint32_t queryCount)
 {
     struct vkResetQueryPool_params params;
@@ -7259,6 +7460,17 @@ VkResult WINAPI vkSetEvent(VkDevice device, VkEvent event)
     params.event = event;
     status = UNIX_CALL(vkSetEvent, &params);
     assert(!status && "vkSetEvent");
+    return params.result;
+}
+
+VkResult WINAPI vkSetGpaDeviceClockModeAMD(VkDevice device, VkGpaDeviceClockModeInfoAMD *pInfo)
+{
+    struct vkSetGpaDeviceClockModeAMD_params params;
+    NTSTATUS status;
+    params.device = device;
+    params.pInfo = pInfo;
+    status = UNIX_CALL(vkSetGpaDeviceClockModeAMD, &params);
+    assert(!status && "vkSetGpaDeviceClockModeAMD");
     return params.result;
 }
 
@@ -7683,6 +7895,8 @@ static const struct vulkan_func vk_device_dispatch_table[] =
     {"vkCmdBeginConditionalRenderingEXT", vkCmdBeginConditionalRenderingEXT},
     {"vkCmdBeginCustomResolveEXT", vkCmdBeginCustomResolveEXT},
     {"vkCmdBeginDebugUtilsLabelEXT", vkCmdBeginDebugUtilsLabelEXT},
+    {"vkCmdBeginGpaSampleAMD", vkCmdBeginGpaSampleAMD},
+    {"vkCmdBeginGpaSessionAMD", vkCmdBeginGpaSessionAMD},
     {"vkCmdBeginPerTileExecutionQCOM", vkCmdBeginPerTileExecutionQCOM},
     {"vkCmdBeginQuery", vkCmdBeginQuery},
     {"vkCmdBeginQueryIndexedEXT", vkCmdBeginQueryIndexedEXT},
@@ -7742,6 +7956,7 @@ static const struct vulkan_func vk_device_dispatch_table[] =
     {"vkCmdCopyBufferToImage", vkCmdCopyBufferToImage},
     {"vkCmdCopyBufferToImage2", vkCmdCopyBufferToImage2},
     {"vkCmdCopyBufferToImage2KHR", vkCmdCopyBufferToImage2KHR},
+    {"vkCmdCopyGpaSessionResultsAMD", vkCmdCopyGpaSessionResultsAMD},
     {"vkCmdCopyImage", vkCmdCopyImage},
     {"vkCmdCopyImage2", vkCmdCopyImage2},
     {"vkCmdCopyImage2KHR", vkCmdCopyImage2KHR},
@@ -7809,6 +8024,8 @@ static const struct vulkan_func vk_device_dispatch_table[] =
     {"vkCmdEncodeVideoKHR", vkCmdEncodeVideoKHR},
     {"vkCmdEndConditionalRenderingEXT", vkCmdEndConditionalRenderingEXT},
     {"vkCmdEndDebugUtilsLabelEXT", vkCmdEndDebugUtilsLabelEXT},
+    {"vkCmdEndGpaSampleAMD", vkCmdEndGpaSampleAMD},
+    {"vkCmdEndGpaSessionAMD", vkCmdEndGpaSessionAMD},
     {"vkCmdEndPerTileExecutionQCOM", vkCmdEndPerTileExecutionQCOM},
     {"vkCmdEndQuery", vkCmdEndQuery},
     {"vkCmdEndQueryIndexedEXT", vkCmdEndQueryIndexedEXT},
@@ -7902,6 +8119,7 @@ static const struct vulkan_func vk_device_dispatch_table[] =
     {"vkCmdSetDiscardRectangleEXT", vkCmdSetDiscardRectangleEXT},
     {"vkCmdSetDiscardRectangleEnableEXT", vkCmdSetDiscardRectangleEnableEXT},
     {"vkCmdSetDiscardRectangleModeEXT", vkCmdSetDiscardRectangleModeEXT},
+    {"vkCmdSetDispatchParametersARM", vkCmdSetDispatchParametersARM},
     {"vkCmdSetEvent", vkCmdSetEvent},
     {"vkCmdSetEvent2", vkCmdSetEvent2},
     {"vkCmdSetEvent2KHR", vkCmdSetEvent2KHR},
@@ -7927,6 +8145,7 @@ static const struct vulkan_func vk_device_dispatch_table[] =
     {"vkCmdSetPolygonModeEXT", vkCmdSetPolygonModeEXT},
     {"vkCmdSetPrimitiveRestartEnable", vkCmdSetPrimitiveRestartEnable},
     {"vkCmdSetPrimitiveRestartEnableEXT", vkCmdSetPrimitiveRestartEnableEXT},
+    {"vkCmdSetPrimitiveRestartIndexEXT", vkCmdSetPrimitiveRestartIndexEXT},
     {"vkCmdSetPrimitiveTopology", vkCmdSetPrimitiveTopology},
     {"vkCmdSetPrimitiveTopologyEXT", vkCmdSetPrimitiveTopologyEXT},
     {"vkCmdSetProvokingVertexModeEXT", vkCmdSetProvokingVertexModeEXT},
@@ -8016,6 +8235,7 @@ static const struct vulkan_func vk_device_dispatch_table[] =
     {"vkCreateEvent", vkCreateEvent},
     {"vkCreateFence", vkCreateFence},
     {"vkCreateFramebuffer", vkCreateFramebuffer},
+    {"vkCreateGpaSessionAMD", vkCreateGpaSessionAMD},
     {"vkCreateGraphicsPipelines", vkCreateGraphicsPipelines},
     {"vkCreateImage", vkCreateImage},
     {"vkCreateImageView", vkCreateImageView},
@@ -8068,6 +8288,7 @@ static const struct vulkan_func vk_device_dispatch_table[] =
     {"vkDestroyEvent", vkDestroyEvent},
     {"vkDestroyFence", vkDestroyFence},
     {"vkDestroyFramebuffer", vkDestroyFramebuffer},
+    {"vkDestroyGpaSessionAMD", vkDestroyGpaSessionAMD},
     {"vkDestroyImage", vkDestroyImage},
     {"vkDestroyImageView", vkDestroyImageView},
     {"vkDestroyIndirectCommandsLayoutEXT", vkDestroyIndirectCommandsLayoutEXT},
@@ -8136,7 +8357,9 @@ static const struct vulkan_func vk_device_dispatch_table[] =
     {"vkGetDeviceBufferMemoryRequirements", vkGetDeviceBufferMemoryRequirements},
     {"vkGetDeviceBufferMemoryRequirementsKHR", vkGetDeviceBufferMemoryRequirementsKHR},
     {"vkGetDeviceCombinedImageSamplerIndexNVX", vkGetDeviceCombinedImageSamplerIndexNVX},
+    {"vkGetDeviceFaultDebugInfoKHR", vkGetDeviceFaultDebugInfoKHR},
     {"vkGetDeviceFaultInfoEXT", vkGetDeviceFaultInfoEXT},
+    {"vkGetDeviceFaultReportsKHR", vkGetDeviceFaultReportsKHR},
     {"vkGetDeviceGroupPeerMemoryFeatures", vkGetDeviceGroupPeerMemoryFeatures},
     {"vkGetDeviceGroupPeerMemoryFeaturesKHR", vkGetDeviceGroupPeerMemoryFeaturesKHR},
     {"vkGetDeviceGroupPresentCapabilitiesKHR", vkGetDeviceGroupPresentCapabilitiesKHR},
@@ -8164,6 +8387,9 @@ static const struct vulkan_func vk_device_dispatch_table[] =
     {"vkGetFramebufferTilePropertiesQCOM", vkGetFramebufferTilePropertiesQCOM},
     {"vkGetGeneratedCommandsMemoryRequirementsEXT", vkGetGeneratedCommandsMemoryRequirementsEXT},
     {"vkGetGeneratedCommandsMemoryRequirementsNV", vkGetGeneratedCommandsMemoryRequirementsNV},
+    {"vkGetGpaDeviceClockInfoAMD", vkGetGpaDeviceClockInfoAMD},
+    {"vkGetGpaSessionResultsAMD", vkGetGpaSessionResultsAMD},
+    {"vkGetGpaSessionStatusAMD", vkGetGpaSessionStatusAMD},
     {"vkGetImageMemoryRequirements", vkGetImageMemoryRequirements},
     {"vkGetImageMemoryRequirements2", vkGetImageMemoryRequirements2},
     {"vkGetImageMemoryRequirements2KHR", vkGetImageMemoryRequirements2KHR},
@@ -8243,6 +8469,7 @@ static const struct vulkan_func vk_device_dispatch_table[] =
     {"vkQueueInsertDebugUtilsLabelEXT", vkQueueInsertDebugUtilsLabelEXT},
     {"vkQueueNotifyOutOfBandNV", vkQueueNotifyOutOfBandNV},
     {"vkQueuePresentKHR", vkQueuePresentKHR},
+    {"vkQueueSetPerfHintQCOM", vkQueueSetPerfHintQCOM},
     {"vkQueueSetPerformanceConfigurationINTEL", vkQueueSetPerformanceConfigurationINTEL},
     {"vkQueueSubmit", vkQueueSubmit},
     {"vkQueueSubmit2", vkQueueSubmit2},
@@ -8259,12 +8486,14 @@ static const struct vulkan_func vk_device_dispatch_table[] =
     {"vkResetDescriptorPool", vkResetDescriptorPool},
     {"vkResetEvent", vkResetEvent},
     {"vkResetFences", vkResetFences},
+    {"vkResetGpaSessionAMD", vkResetGpaSessionAMD},
     {"vkResetQueryPool", vkResetQueryPool},
     {"vkResetQueryPoolEXT", vkResetQueryPoolEXT},
     {"vkSetDebugUtilsObjectNameEXT", vkSetDebugUtilsObjectNameEXT},
     {"vkSetDebugUtilsObjectTagEXT", vkSetDebugUtilsObjectTagEXT},
     {"vkSetDeviceMemoryPriorityEXT", vkSetDeviceMemoryPriorityEXT},
     {"vkSetEvent", vkSetEvent},
+    {"vkSetGpaDeviceClockModeAMD", vkSetGpaDeviceClockModeAMD},
     {"vkSetHdrMetadataEXT", vkSetHdrMetadataEXT},
     {"vkSetLatencyMarkerNV", vkSetLatencyMarkerNV},
     {"vkSetLatencySleepModeNV", vkSetLatencySleepModeNV},
@@ -8340,6 +8569,8 @@ static const struct vulkan_func vk_phys_dev_dispatch_table[] =
     {"vkGetPhysicalDeviceProperties", vkGetPhysicalDeviceProperties},
     {"vkGetPhysicalDeviceProperties2", vkGetPhysicalDeviceProperties2},
     {"vkGetPhysicalDeviceProperties2KHR", vkGetPhysicalDeviceProperties2KHR},
+    {"vkGetPhysicalDeviceQueueFamilyDataGraphEngineOperationPropertiesARM", vkGetPhysicalDeviceQueueFamilyDataGraphEngineOperationPropertiesARM},
+    {"vkGetPhysicalDeviceQueueFamilyDataGraphOpticalFlowImageFormatsARM", vkGetPhysicalDeviceQueueFamilyDataGraphOpticalFlowImageFormatsARM},
     {"vkGetPhysicalDeviceQueueFamilyDataGraphProcessingEnginePropertiesARM", vkGetPhysicalDeviceQueueFamilyDataGraphProcessingEnginePropertiesARM},
     {"vkGetPhysicalDeviceQueueFamilyDataGraphPropertiesARM", vkGetPhysicalDeviceQueueFamilyDataGraphPropertiesARM},
     {"vkGetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHR", vkGetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHR},
@@ -8416,6 +8647,8 @@ static const struct vulkan_func vk_instance_dispatch_table[] =
     {"vkGetPhysicalDeviceProperties", vkGetPhysicalDeviceProperties},
     {"vkGetPhysicalDeviceProperties2", vkGetPhysicalDeviceProperties2},
     {"vkGetPhysicalDeviceProperties2KHR", vkGetPhysicalDeviceProperties2KHR},
+    {"vkGetPhysicalDeviceQueueFamilyDataGraphEngineOperationPropertiesARM", vkGetPhysicalDeviceQueueFamilyDataGraphEngineOperationPropertiesARM},
+    {"vkGetPhysicalDeviceQueueFamilyDataGraphOpticalFlowImageFormatsARM", vkGetPhysicalDeviceQueueFamilyDataGraphOpticalFlowImageFormatsARM},
     {"vkGetPhysicalDeviceQueueFamilyDataGraphProcessingEnginePropertiesARM", vkGetPhysicalDeviceQueueFamilyDataGraphProcessingEnginePropertiesARM},
     {"vkGetPhysicalDeviceQueueFamilyDataGraphPropertiesARM", vkGetPhysicalDeviceQueueFamilyDataGraphPropertiesARM},
     {"vkGetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHR", vkGetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHR},

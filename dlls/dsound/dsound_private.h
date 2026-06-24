@@ -32,7 +32,7 @@
 
 #include "wine/list.h"
 
-#define DS_MAX_CHANNELS 6
+#define DS_MAX_CHANNELS 8
 
 extern int ds_hel_buflen;
 
@@ -70,14 +70,13 @@ typedef struct DSFilter {
  */
 struct DirectSoundDevice
 {
-    LONG                        ref;
-
     GUID                        guid;
     DSCAPS                      drvcaps;
     DWORD                       priolevel, sleeptime;
     PWAVEFORMATEX               pwfx, primary_pwfx;
     LPBYTE                      buffer;
     DWORD                       writelead, buflen, ac_frames, frag_frames, playpos, pad, stopped;
+    LONG                        terminated;
     int                         nrofbuffers;
     IDirectSoundBufferImpl**    buffers;
     SRWLOCK                     buffer_list_lock;
@@ -106,7 +105,6 @@ struct DirectSoundDevice
     IAudioRenderClient *render;
 
     HANDLE sleepev, thread;
-    struct list entry;
 };
 
 /* reference counted buffer memory for duplicated buffer memory */
@@ -147,8 +145,8 @@ struct IDirectSoundBufferImpl
     DSBUFFERDESC                dsbd;
     /* used for frequency conversion (PerfectPitch) */
     float                       firgain;
-    LONG64                      freqAdjustNum,freqAdjustDen;
-    LONG64                      freqAccNum;
+    DWORD                       freqAdjustNum,freqAdjustDen;
+    DWORD                       freqAccNum;
     /* used for mixing */
     DWORD                       sec_mixpos;
     /* Holds a copy of the next 'writelead' bytes, to be used for mixing. This makes it
@@ -250,9 +248,6 @@ HRESULT IDirectSoundCaptureImpl_Create(IUnknown *outer_unk, REFIID riid, void **
 #define STATE_PLAYING   2
 #define STATE_CAPTURING 2
 #define STATE_STOPPING  3
-
-extern CRITICAL_SECTION DSOUND_renderers_lock;
-extern struct list DSOUND_renderers;
 
 extern GUID *DSOUND_renderer_guids;
 extern GUID *DSOUND_capture_guids;

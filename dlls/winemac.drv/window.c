@@ -859,7 +859,7 @@ static LRESULT move_window(HWND hwnd, WPARAM wparam)
     POINT capturePoint;
     LONG style = NtUserGetWindowLongW(hwnd, GWL_STYLE);
     BOOL moved = FALSE;
-    DWORD dwPoint = NtUserGetThreadInfo()->message_pos;
+    DWORD dwPoint = NtUserGetMessagePos();
     INT captionHeight;
     HMONITOR mon = 0;
     MONITORINFO info;
@@ -1076,8 +1076,7 @@ static void macdrv_client_surface_destroy(struct client_surface *client)
 
     TRACE("%s\n", debugstr_client_surface(client));
 
-    if (surface->metal_view) macdrv_view_release_metal_view(surface->metal_view);
-    if (surface->metal_device) macdrv_release_metal_device(surface->metal_device);
+    if (surface->metal_swapchain) macdrv_destroy_swapchain(surface->metal_swapchain);
 }
 
 static void macdrv_client_surface_detach(struct client_surface *client)
@@ -1165,6 +1164,35 @@ struct macdrv_client_surface *macdrv_client_surface_create(HWND hwnd)
     }
 
     return surface;
+}
+
+BOOL macdrv_client_surface_acquire_metal_swapchain(struct macdrv_client_surface *surface)
+{
+    HWND hwnd = surface->client.hwnd;
+    struct macdrv_win_data *data;
+
+    if (surface->metal_swapchain) return TRUE;
+
+    if ((data = get_win_data(hwnd)))
+    {
+        release_win_data(data);
+        surface->metal_swapchain = macdrv_create_view_swapchain(surface->cocoa_view);
+    }
+    else
+    {
+        RECT rect;
+
+        if (NtUserGetAncestor(hwnd, GA_ROOT) != hwnd)
+        {
+            FIXME("Cross-process child window Metal swapchains are not implemented\n");
+            return FALSE;
+        }
+
+        if (!NtUserGetClientRect(hwnd, &rect, NtUserGetWinMonitorDpi(hwnd, MDT_RAW_DPI))) return FALSE;
+        surface->metal_swapchain = macdrv_create_offscreen_swapchain(hwnd, cgrect_from_rect(rect));
+    }
+
+    return surface->metal_swapchain != NULL;
 }
 
 /**********************************************************************
@@ -1531,10 +1559,38 @@ LRESULT macdrv_WindowMessage(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
         activate_on_following_focus();
         TRACE("WM_MACDRV_ACTIVATE_ON_FOLLOWING_FOCUS time %u\n", activate_on_focus_time);
         return 0;
+    case WM_MACDRV_CREATE_REMOTE_LAYER:
+        if ((data = get_win_data(hwnd)))
+        {
+            TRACE("WM_MACDRV_CREATE_REMOTE_LAYER context_id %u\n", (unsigned int)lp);
+            if (data->cocoa_window) macdrv_window_create_ca_layer_host_view(data->cocoa_window, (unsigned int)lp);
+            release_win_data(data);
+        }
+        return 0;
+    case WM_MACDRV_RELEASE_REMOTE_LAYER:
+        if ((data = get_win_data(hwnd)))
+        {
+            TRACE("WM_MACDRV_RELEASE_REMOTE_LAYER context_id %u\n", (unsigned int)lp);
+            if (data->cocoa_window) macdrv_window_release_ca_layer_host_view(data->cocoa_window, (unsigned int)lp);
+            release_win_data(data);
+        }
+        return 0;
     }
 
     FIXME("unrecognized window msg %x hwnd %p wp %lx lp %lx\n", msg, hwnd, (unsigned long)wp, lp);
     return 0;
+}
+
+
+void macdrv_create_remote_layer(void* hwnd_ptr, unsigned int context_id)
+{
+    NtUserPostMessage((HWND)hwnd_ptr, WM_MACDRV_CREATE_REMOTE_LAYER, 0, context_id);
+}
+
+
+void macdrv_release_remote_layer(void* hwnd_ptr, unsigned int context_id)
+{
+    NtUserPostMessage((HWND)hwnd_ptr, WM_MACDRV_RELEASE_REMOTE_LAYER, 0, context_id);
 }
 
 
@@ -1877,6 +1933,7 @@ void macdrv_window_did_unminimize(HWND hwnd)
     {
         TRACE("restoring win %p/%p\n", hwnd, data->cocoa_window);
         release_win_data(data);
+        NtUserSetActiveWindow(hwnd);
         send_message(hwnd, WM_SYSCOMMAND, SC_RESTORE, 0);
         return;
     }
@@ -2162,3 +2219,75 @@ void init_win_context(void)
     pthread_mutex_init(&win_data_mutex, &attr);
     pthread_mutexattr_destroy(&attr);
 }
+
+/* ===== DXMT compatibility shim =====
+ * DXMT resolves "macdrv_functions" via dlsym(RTLD_DEFAULT) and reads
+ * win_data->client_cocoa_view. Wine 11.9 refactored macdrv_win_data (the old
+ * cocoa_view is gone; client_view replaces it), so return a struct in DXMT's
+ * expected 8.16-era layout. */
+struct dxmt_win_data
+{
+    HWND          hwnd;
+    macdrv_window cocoa_window;
+    macdrv_view   cocoa_view;
+    macdrv_view   client_cocoa_view;
+};
+
+static struct dxmt_win_data dxmt_wd;
+
+static struct dxmt_win_data *dxmt_get_win_data( HWND hwnd )
+{
+    struct macdrv_win_data *data = get_win_data( hwnd );
+    if (!data) return NULL;
+    /* Wine 11.9 only attaches a client view via a client surface; DXMT expects
+     * one to already exist. Create and attach one to the window on demand. */
+    if (!data->client_view && data->cocoa_window)
+    {
+        RECT rect;
+        macdrv_view view;
+        NtUserGetClientRect( hwnd, &rect, NtUserGetWinMonitorDpi( hwnd, MDT_RAW_DPI ) );
+        if ((view = macdrv_create_view( cgrect_from_rect( rect ) )))
+        {
+            macdrv_set_view_superview( view, NULL, data->cocoa_window, NULL, NULL );
+            macdrv_set_view_hidden( view, FALSE );
+            data->client_view = view;
+        }
+    }
+    dxmt_wd.hwnd = hwnd;
+    dxmt_wd.cocoa_window = data->cocoa_window;
+    dxmt_wd.cocoa_view = data->client_view;
+    dxmt_wd.client_cocoa_view = data->client_view;
+    release_win_data( data );
+    return &dxmt_wd;
+}
+
+static void dxmt_release_win_data( struct dxmt_win_data *data ) { (void)data; }
+
+struct dxmt_macdrv_functions
+{
+    void (*macdrv_init_display_devices)(BOOL);
+    struct dxmt_win_data *(*get_win_data)(HWND);
+    void (*release_win_data)(struct dxmt_win_data *);
+    macdrv_window (*macdrv_get_cocoa_window)(HWND, BOOL);
+    macdrv_metal_device (*macdrv_create_metal_device)(void);
+    void (*macdrv_release_metal_device)(macdrv_metal_device);
+    macdrv_metal_view (*macdrv_view_create_metal_view)(macdrv_view, macdrv_metal_device);
+    macdrv_metal_layer (*macdrv_view_get_metal_layer)(macdrv_metal_view);
+    void (*macdrv_view_release_metal_view)(macdrv_metal_view);
+    void (*on_main_thread)(void *);
+};
+
+__attribute__((visibility("default")))
+struct dxmt_macdrv_functions macdrv_functions =
+{
+    NULL,
+    dxmt_get_win_data,
+    dxmt_release_win_data,
+    macdrv_get_cocoa_window,
+    macdrv_create_metal_device,
+    macdrv_release_metal_device,
+    macdrv_view_create_metal_view,
+    macdrv_view_get_metal_layer,
+    macdrv_view_release_metal_view,
+    NULL,
+};

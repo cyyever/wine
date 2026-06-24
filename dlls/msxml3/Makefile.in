@@ -32,6 +32,7 @@ SOURCES = \
 	pi.c \
 	rsrc.rc \
 	saxreader.c \
+	saxreader_extensions.idl \
 	schema.c \
 	schemas.rc \
 	selection.c \
@@ -43,5 +44,6 @@ SOURCES = \
 	xmlparser.c \
 	xmlparser.idl \
 	xmlview.c \
+	xpath.c \
 	xslpattern.l \
 	xslpattern.y

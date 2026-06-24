@@ -1318,7 +1318,7 @@ static void window_set_net_wm_fullscreen_monitors( struct x11drv_win_data *data,
  * windows spanning multiple monitors */
 static void update_net_wm_fullscreen_monitors( struct x11drv_win_data *data )
 {
-    struct monitor_indices monitors;
+    struct monitor_indices monitors = {0};
 
     /* If the current display device handler cannot detect dynamic device changes, do not use
      * _NET_WM_FULLSCREEN_MONITORS because xinerama_get_fullscreen_monitors() may report wrong
@@ -1588,6 +1588,10 @@ static void window_set_wm_state( struct x11drv_win_data *data, UINT new_state, B
      * to WithdrawnState first, then to NormalState */
     if (data->managed && MAKELONG(old_state, new_state) == MAKELONG(IconicState, NormalState))
     {
+        /* Previous IconicState request is still pending, wait for it to complete so that there is no
+         * unexpected IconicState WM_STATE notify that will override the NormalState soon to be queued */
+        if (data->wm_state_serial) return;
+
         WARN( "window %p/%lx is iconic, remapping to workaround Mutter issues.\n", data->hwnd, data->whole_window );
         window_set_wm_state( data, WithdrawnState, FALSE );
         window_set_wm_state( data, NormalState, activate );
@@ -1700,8 +1704,9 @@ static UINT window_update_client_state( struct x11drv_win_data *data )
         }
         else if (old_style & (WS_MINIMIZE | WS_MAXIMIZE))
         {
+            BOOL activate = (old_style & (WS_MINIMIZE | WS_VISIBLE)) == (WS_MINIMIZE | WS_VISIBLE);
             TRACE( "restoring win %p/%lx\n", data->hwnd, data->whole_window );
-            return SC_RESTORE;
+            return MAKELONG(SC_RESTORE, activate);
         }
     }
     if (!(old_style & WS_MINIMIZE) && (new_style & WS_MINIMIZE))
@@ -1736,7 +1741,7 @@ static UINT window_update_client_config( struct x11drv_win_data *data )
 {
     static const UINT fullscreen_mask = (1 << NET_WM_STATE_MAXIMIZED) | (1 << NET_WM_STATE_FULLSCREEN);
     RECT rect, old_rect = data->rects.window, new_rect;
-    unsigned int old_generation, generation;
+    unsigned long old_generation, generation;
     long old_monitors[4], monitors[4];
     UINT flags;
 

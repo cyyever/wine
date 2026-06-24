@@ -22,6 +22,7 @@
 #define __WINE_SERVER_OBJECT_H
 
 #include <poll.h>
+#include <stdbool.h>
 #include <sys/time.h>
 #include "wine/server_protocol.h"
 #include "wine/list.h"
@@ -287,9 +288,8 @@ static inline int is_machine_64bit( unsigned short machine )
 }
 static inline int is_machine_supported( unsigned short machine )
 {
-    unsigned int i;
-    for (i = 0; i < supported_machines_count; i++) if (supported_machines[i] == machine) return 1;
-    if (native_machine == IMAGE_FILE_MACHINE_ARM64) return machine == IMAGE_FILE_MACHINE_AMD64;
+    for (unsigned int i = 0; i < supported_machines_count; i++)
+        if (supported_machines[i] == machine) return 1;
     return 0;
 }
 

@@ -96,6 +96,8 @@ enum macdrv_window_messages
 {
     WM_MACDRV_SET_WIN_REGION = WM_WINE_FIRST_DRIVER_MSG,
     WM_MACDRV_ACTIVATE_ON_FOLLOWING_FOCUS,
+    WM_MACDRV_CREATE_REMOTE_LAYER,
+    WM_MACDRV_RELEASE_REMOTE_LAYER,
 };
 
 struct macdrv_thread_data
@@ -114,10 +116,11 @@ struct macdrv_thread_data
 };
 
 extern struct macdrv_thread_data *macdrv_init_thread_data(void);
+extern pthread_key_t macdrv_thread_data_key;
 
 static inline struct macdrv_thread_data *macdrv_thread_data(void)
 {
-    return (struct macdrv_thread_data *)(UINT_PTR)NtUserGetThreadInfo()->driver_data;
+    return pthread_getspecific( macdrv_thread_data_key );
 }
 
 
@@ -158,7 +161,7 @@ extern BOOL macdrv_SetCursorPos(INT x, INT y);
 extern BOOL macdrv_RegisterHotKey(HWND hwnd, UINT mod_flags, UINT vkey);
 extern void macdrv_UnregisterHotKey(HWND hwnd, UINT modifiers, UINT vkey);
 extern SHORT macdrv_VkKeyScanEx(WCHAR wChar, HKL hkl);
-extern UINT macdrv_ImeProcessKey(HIMC himc, UINT wparam, UINT lparam, const BYTE *state);
+extern UINT macdrv_ImeToAsciiEx(UINT vkey, UINT vsc, const BYTE *state, HIMC himc);
 extern UINT macdrv_MapVirtualKeyEx(UINT wCode, UINT wMapType, HKL hkl);
 extern INT macdrv_ToUnicodeEx(UINT virtKey, UINT scanCode, const BYTE *lpKeyState,
                               LPWSTR bufW, int bufW_size, UINT flags, HKL hkl);
@@ -192,10 +195,9 @@ struct macdrv_win_data
 
 struct macdrv_client_surface
 {
-    struct client_surface client;
-    macdrv_view           cocoa_view;
-    macdrv_metal_device   metal_device;
-    macdrv_metal_view     metal_view;
+    struct client_surface   client;
+    macdrv_view             cocoa_view;
+    macdrv_metal_swapchain  metal_swapchain;
 };
 
 static inline struct macdrv_client_surface *impl_from_client_surface(struct client_surface *client)
@@ -204,6 +206,7 @@ static inline struct macdrv_client_surface *impl_from_client_surface(struct clie
 }
 
 extern struct macdrv_client_surface *macdrv_client_surface_create(HWND hwnd);
+extern BOOL macdrv_client_surface_acquire_metal_swapchain(struct macdrv_client_surface *surface);
 
 extern struct macdrv_win_data *get_win_data(HWND hwnd);
 extern void release_win_data(struct macdrv_win_data *data);

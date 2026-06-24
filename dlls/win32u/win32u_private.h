@@ -41,6 +41,7 @@ extern BOOL process_wine_setcursor( HWND hwnd, HWND window, HCURSOR handle );
 extern HICON alloc_cursoricon_handle( BOOL is_icon );
 extern ULONG_PTR get_icon_param( HICON handle );
 extern ULONG_PTR set_icon_param( HICON handle, const struct free_icon_params *params );
+extern HICON create_small_icon( HICON handle );
 
 /* dce.c */
 extern struct window_surface dummy_surface;
@@ -291,6 +292,7 @@ extern BOOL is_zoomed( HWND hwnd );
 extern BOOL set_window_pixel_format( HWND hwnd, int format, BOOL internal );
 extern int get_window_pixel_format( HWND hwnd );
 extern DWORD get_window_long( HWND hwnd, INT offset );
+extern UINT get_window_fnid( HWND hwnd );
 extern ULONG_PTR get_window_long_ptr( HWND hwnd, INT offset, BOOL ansi );
 extern BOOL get_window_rect( HWND hwnd, RECT *rect, UINT dpi );
 enum coords_relative;
@@ -305,6 +307,7 @@ extern void map_window_region( HWND from, HWND to, HRGN hrgn );
 extern BOOL screen_to_client( HWND hwnd, POINT *pt );
 extern LONG_PTR set_window_long( HWND hwnd, INT offset, UINT size, LONG_PTR newval,
                                  BOOL ansi );
+extern void set_window_normal_placement( HWND hwnd, RECT rect );
 extern BOOL set_window_pos( WINDOWPOS *winpos, int parent_x, int parent_y );
 extern UINT set_window_style_bits( HWND hwnd, UINT set_bits, UINT clear_bits );
 extern void update_window_state( HWND hwnd );
@@ -418,7 +421,7 @@ static inline UINT unicodez_to_ascii( char *dst, const WCHAR *src )
 
 static inline BOOL is_win9x(void)
 {
-    return NtCurrentTeb()->Peb->OSPlatformId == VER_PLATFORM_WIN32s;
+    return RtlGetCurrentPeb()->OSPlatformId == VER_PLATFORM_WIN32s;
 }
 
 static inline const char *debugstr_us( const UNICODE_STRING *us )

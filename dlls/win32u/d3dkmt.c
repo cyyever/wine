@@ -491,7 +491,7 @@ static void d3dkmt_init_vulkan(void)
     static const struct vulkan_instance_extensions extensions =
     {
         .has_VK_KHR_get_physical_device_properties2 = 1,
-        .has_VK_KHR_external_memory_capabilities = 1,
+        .has_VK_KHR_external_fence_capabilities = 1,
     };
 
     d3dkmt_vulkan_instance = vulkan_instance_create( &extensions );
@@ -707,7 +707,7 @@ NTSTATUS WINAPI NtGdiDdDDIQueryAdapterInfo( D3DKMT_QUERYADAPTERINFO *desc )
         if (desc->PrivateDriverDataSize < sizeof(*value))
             return STATUS_INVALID_PARAMETER;
 
-        *value = KMT_DRIVERVERSION_WDDM_1_3;
+        *value = KMT_DRIVERVERSION_WDDM_3_1;
         return STATUS_SUCCESS;
     }
     default:

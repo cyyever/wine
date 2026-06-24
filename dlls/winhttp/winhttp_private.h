@@ -25,8 +25,6 @@
 
 #include "wine/list.h"
 
-#define WINHTTP_HANDLE_TYPE_SOCKET 4
-
 struct object_header;
 struct object_vtbl
 {
@@ -53,8 +51,6 @@ struct object_header
     DWORD notify_mask;
     LONG recursion_count;
     struct list entry;
-    volatile LONG pending_sends;
-    volatile LONG pending_receives;
 };
 
 struct hostdata
@@ -175,17 +171,15 @@ enum request_flags
     REQUEST_FLAG_WEBSOCKET_UPGRADE = 0x01,
 };
 
-enum request_response_state
+enum request_state
 {
-    REQUEST_RESPONSE_STATE_NONE,
-    REQUEST_RESPONSE_STATE_SENDING_REQUEST,
-    REQUEST_RESPONSE_STATE_READ_RESPONSE_QUEUED,
-    REQUEST_RESPONSE_STATE_REQUEST_SENT,
-    REQUEST_RESPONSE_STATE_READ_RESPONSE_QUEUED_REQUEST_SENT,
-    REQUEST_RESPONSE_STATE_REPLY_RECEIVED,
-    REQUEST_RESPONSE_STATE_READ_RESPONSE_QUEUED_REPLY_RECEIVED,
-    REQUEST_RESPONSE_RECURSIVE_REQUEST,
-    REQUEST_RESPONSE_STATE_RESPONSE_RECEIVED,
+    REQUEST_STATE_NONE,
+    REQUEST_STATE_RECURSIVE_REQUEST,
+    REQUEST_STATE_SENDING_REQUEST,
+    REQUEST_STATE_REQUEST_SENT,
+    REQUEST_STATE_READ_RESPONSE_QUEUED,
+    REQUEST_STATE_RECEIVING_RESPONSE,
+    REQUEST_STATE_RESPONSE_RECEIVED,
 };
 
 #define READ_BUFFER_SIZE 8192
@@ -263,9 +257,8 @@ struct request
     } creds[TARGET_MAX][SCHEME_MAX];
     unsigned int websocket_receive_buffer_size;
     unsigned int websocket_send_buffer_size, websocket_set_send_buffer_size;
-    int read_reply_len;
-    DWORD read_reply_status;
-    enum request_response_state state;
+    int reply_len;
+    enum request_state state;
 };
 
 enum socket_state
@@ -326,6 +319,8 @@ struct socket
     unsigned int bytes_in_read_buffer;
     SRWLOCK send_lock;
     volatile LONG pending_noncontrol_send;
+    volatile LONG pending_sends;
+    volatile LONG pending_receives;
     enum fragment_type sending_fragment_type;
     enum fragment_type receiving_fragment_type;
     BOOL last_receive_final;
@@ -429,8 +424,11 @@ BOOL free_handle( HINTERNET );
 
 void send_callback( struct object_header *, DWORD, LPVOID, DWORD );
 void close_connection( struct request * );
-void init_queue( struct queue *queue );
+void init_queue( struct queue * );
+BOOL cancel_queue( struct queue * );
 void stop_queue( struct queue * );
+DWORD queue_task( struct queue *, TASK_CALLBACK, struct task_header *, struct object_header * );
+BOOL task_needs_completion( struct task_header * );
 
 void netconn_addref( struct netconn * );
 void netconn_release( struct netconn * );

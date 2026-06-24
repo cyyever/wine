@@ -1552,7 +1552,7 @@ BOOL SYSCALL_API NtUserGetCaretPos( POINT *pt )
 }
 
 ATOM SYSCALL_API NtUserGetClassInfoEx( HINSTANCE instance, UNICODE_STRING *name, WNDCLASSEXW *wc,
-                                       struct client_menu_name *menu_name, BOOL ansi )
+                                       struct client_menu_name **menu_name, BOOL ansi )
 {
     SYSCALL_FUNC( NtUserGetClassInfoEx );
 }
@@ -1720,6 +1720,11 @@ BOOL SYSCALL_API NtUserGetMessage( MSG *msg, HWND hwnd, UINT first, UINT last )
     SYSCALL_FUNC( NtUserGetMessage );
 }
 
+DWORD SYSCALL_API NtUserGetMessagePos(void)
+{
+    SYSCALL_FUNC( NtUserGetMessagePos );
+}
+
 int SYSCALL_API NtUserGetMouseMovePointsEx( UINT size, MOUSEMOVEPOINT *ptin, MOUSEMOVEPOINT *ptout,
                                             int count, DWORD resolution )
 {
@@ -1883,6 +1888,11 @@ NTSTATUS SYSCALL_API NtUserInitializeClientPfnArrays( const ntuser_client_func_p
                                                       const ntuser_client_func_ptr *client_workers, HINSTANCE user_module )
 {
     SYSCALL_FUNC( NtUserInitializeClientPfnArrays );
+}
+
+BOOL SYSCALL_API NtUserInitializeTouchInjection( UINT max_count, UINT mode )
+{
+    SYSCALL_FUNC( NtUserInitializeTouchInjection );
 }
 
 HICON SYSCALL_API NtUserInternalGetWindowIcon( HWND hwnd, UINT type )
@@ -2070,8 +2080,7 @@ BOOL SYSCALL_API NtUserRedrawWindow( HWND hwnd, const RECT *rect, HRGN hrgn, UIN
 }
 
 ATOM SYSCALL_API NtUserRegisterClassExWOW( const WNDCLASSEXW *wc, UNICODE_STRING *name, UNICODE_STRING *version,
-                                           struct client_menu_name *client_menu_name, DWORD fnid,
-                                           DWORD flags, DWORD *wow )
+                                           struct client_menu_name *menu_name, DWORD fnid, DWORD flags, DWORD *wow )
 {
     SYSCALL_FUNC( NtUserRegisterClassExWOW );
 }
@@ -2258,6 +2267,11 @@ BOOL SYSCALL_API NtUserSetMenuContextHelpId( HMENU handle, DWORD id )
 BOOL SYSCALL_API NtUserSetMenuDefaultItem( HMENU handle, UINT item, UINT bypos )
 {
     SYSCALL_FUNC( NtUserSetMenuDefaultItem );
+}
+
+LPARAM SYSCALL_API NtUserSetMessageExtraInfo( LPARAM lp )
+{
+    SYSCALL_FUNC( NtUserSetMessageExtraInfo );
 }
 
 BOOL SYSCALL_API NtUserSetObjectInformation( HANDLE handle, INT index, void *info, DWORD len )
@@ -2486,8 +2500,7 @@ BOOL SYSCALL_API NtUserUnhookWindowsHookEx( HHOOK handle )
     SYSCALL_FUNC( NtUserUnhookWindowsHookEx );
 }
 
-BOOL SYSCALL_API NtUserUnregisterClass( UNICODE_STRING *name, HINSTANCE instance,
-                                        struct client_menu_name *client_menu_name )
+BOOL SYSCALL_API NtUserUnregisterClass( UNICODE_STRING *name, HINSTANCE instance, struct client_menu_name **menu_name )
 {
     SYSCALL_FUNC( NtUserUnregisterClass );
 }

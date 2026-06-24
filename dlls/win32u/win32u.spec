@@ -1051,7 +1051,7 @@
 @ stub -syscall NtUserGetMenuIndex
 @ stdcall -syscall NtUserGetMenuItemRect(long long long ptr)
 @ stdcall -syscall NtUserGetMessage(ptr long long long)
-@ stub -syscall NtUserGetMessagePos
+@ stdcall -syscall NtUserGetMessagePos()
 @ stub -syscall NtUserGetMinuserIdForBaseWindow
 @ stub -syscall NtUserGetModernAppWindow
 @ stdcall -syscall NtUserGetMouseMovePointsEx(long ptr ptr long long)
@@ -1150,7 +1150,7 @@
 @ stub -syscall NtUserInitializeInputDeviceInjection
 @ stub -syscall NtUserInitializePointerDeviceInjection
 @ stub -syscall NtUserInitializePointerDeviceInjectionEx
-@ stub -syscall NtUserInitializeTouchInjection
+@ stdcall -syscall NtUserInitializeTouchInjection(long long)
 @ stub -syscall NtUserInjectDeviceInput
 @ stub -syscall NtUserInjectGenericHidInput
 @ stub -syscall NtUserInjectGesture
@@ -1388,7 +1388,7 @@
 @ stdcall -syscall NtUserSetMenuContextHelpId(long long)
 @ stdcall -syscall NtUserSetMenuDefaultItem(long long long)
 @ stub -syscall NtUserSetMenuFlagRtoL
-@ stub -syscall NtUserSetMessageExtraInfo
+@ stdcall -syscall NtUserSetMessageExtraInfo(long)
 @ stub -syscall NtUserSetMirrorRendering
 @ stub -syscall NtUserSetModernAppWindow
 @ stub -syscall NtUserSetMonitorWorkArea

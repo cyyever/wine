@@ -77,9 +77,6 @@
 #else
   extern char **environ;
 #endif
-#ifdef __ANDROID__
-# include <jni.h>
-#endif
 
 #include "ntstatus.h"
 #include "windef.h"
@@ -94,7 +91,7 @@
 
 WINE_DEFAULT_DEBUG_CHANNEL(module);
 
-#if defined __i386__ || defined __x86_64__
+#if defined __i386__ || (defined __x86_64__ && !defined __APPLE__)
 #define SO_DLLS_SUPPORTED
 #endif
 
@@ -861,7 +858,7 @@ static NTSTATUS load_so_dll( void *args )
     NTSTATUS status;
     DWORD len;
 
-    if (get_load_order( nt_name, NULL, 0 ) == LO_DISABLED) return STATUS_DLL_NOT_FOUND;
+    if (get_load_order( nt_name, FALSE, NULL ) == LO_DISABLED) return STATUS_DLL_NOT_FOUND;
     InitializeObjectAttributes( &attr, nt_name, OBJ_CASE_INSENSITIVE, 0, 0 );
     if (!get_nt_and_unix_names( &attr, &true_nt_name, &unix_name, FILE_OPEN, FALSE ))
     {
@@ -1256,9 +1253,9 @@ NTSTATUS load_builtin( struct pe_mapping_info *pe_mapping, USHORT machine,
                        ULONG_PTR limit_low, ULONG_PTR limit_high, off_t offset )
 {
     NTSTATUS status;
-    USHORT search_machine = pe_mapping->image.machine;
-    enum loadorder loadorder = get_load_order( &pe_mapping->nt_name,
-                                               pe_mapping->version_res, pe_mapping->version_len );
+    USHORT sysdir_machine, search_machine = pe_mapping->image.machine;
+    BOOL is_system_dir = is_system_dir_path( &pe_mapping->nt_name, &sysdir_machine );
+    enum loadorder loadorder = get_load_order( &pe_mapping->nt_name, is_system_dir, pe_mapping );
 
     if (loadorder == LO_DISABLED) return STATUS_DLL_NOT_FOUND;
 
@@ -1301,7 +1298,7 @@ NTSTATUS load_builtin( struct pe_mapping_info *pe_mapping, USHORT machine,
  */
 NTSTATUS load_unixlib_by_name( const UNICODE_STRING *nt_name, void **handle_ret )
 {
-    unsigned int i, pos, namepos, maxlen = 0;
+    unsigned int i, pos, maxlen = 0;
     unsigned int len = nt_name->Length / sizeof(WCHAR);
     const char *so_dir = get_so_dir( current_machine );
     char *ptr = NULL, *file, *ext = NULL;
@@ -1309,8 +1306,7 @@ NTSTATUS load_unixlib_by_name( const UNICODE_STRING *nt_name, void **handle_ret 
 
     if (!len) return STATUS_DLL_NOT_FOUND;
 
-    for (i = namepos = 0; i < len; i++)
-        if (nt_name->Buffer[i] == '/' || nt_name->Buffer[i] == '\\') break;
+    for (i = 0; i < len; i++) if (nt_name->Buffer[i] == '/' || nt_name->Buffer[i] == '\\') break;
 
     if (i < len)  /* explicit path */
     {
@@ -1330,23 +1326,23 @@ NTSTATUS load_unixlib_by_name( const UNICODE_STRING *nt_name, void **handle_ret 
     if (!(file = malloc( maxlen ))) return STATUS_NO_MEMORY;
 
     pos = maxlen - len - 4;
+    ext = file + pos + len;
     /* we don't want to depend on the current codepage here */
     for (i = 0; i < len; i++)
     {
-        if (nt_name->Buffer[namepos + i] > 127) goto done;
-        file[pos + i] = (char)nt_name->Buffer[namepos + i];
+        if (nt_name->Buffer[i] > 127) goto done;
+        file[pos + i] = (char)nt_name->Buffer[i];
         if (file[pos + i] >= 'A' && file[pos + i] <= 'Z') file[pos + i] += 'a' - 'A';
         else if (file[pos + i] == '.') ext = file + pos + i;
     }
     file[pos + len] = 0;
     file[--pos] = '/';
-    if (!ext) ext = file + pos + len;
 
     if (build_dir)
     {
         ptr = prepend_build_dir_path( file + pos, ".so", "", "/dlls", build_dir );
         strcpy( ext, ".so" );
-        if ((handle = dlopen( ptr, RTLD_NOW ))) goto done;
+        if ((handle = dlopen( ptr, RTLD_NOW | RTLD_GLOBAL ))) goto done;
     }
 
     strcpy( ext, ".so" );
@@ -1354,10 +1350,10 @@ NTSTATUS load_unixlib_by_name( const UNICODE_STRING *nt_name, void **handle_ret 
     {
         ptr = prepend( file + pos, so_dir, strlen(so_dir) );
         ptr = prepend( ptr, dll_paths[i], strlen(dll_paths[i]) );
-        if ((handle = dlopen( ptr, RTLD_NOW ))) goto done;
+        if ((handle = dlopen( ptr, RTLD_NOW | RTLD_GLOBAL ))) goto done;
 
         ptr = prepend( file + pos, dll_paths[i], strlen(dll_paths[i]) );
-        if ((handle = dlopen( ptr, RTLD_NOW ))) goto done;
+        if ((handle = dlopen( ptr, RTLD_NOW | RTLD_GLOBAL ))) goto done;
     }
 
  done:
@@ -1392,18 +1388,15 @@ static const WCHAR *get_machine_wow64_dir( WORD machine )
 
 
 /***************************************************************************
- *	is_builtin_path
+ *	is_system_dir_path
  *
  * Check if path is inside a system directory, to support loading builtins
  * when the corresponding file doesn't exist yet.
  */
-BOOL is_builtin_path( const UNICODE_STRING *path, WORD *machine )
+BOOL is_system_dir_path( const UNICODE_STRING *path, WORD *machine )
 {
     unsigned int i, len = path->Length / sizeof(WCHAR), dirlen;
     const WCHAR *sysdir, *p = path->Buffer;
-
-    /* only fake builtin existence during prefix bootstrap */
-    if (!is_prefix_bootstrap) return FALSE;
 
     for (i = 0; i < supported_machines_count; i++)
     {
@@ -1465,16 +1458,17 @@ static NTSTATUS open_main_image( UNICODE_STRING *nt_name, void **module, SECTION
  */
 NTSTATUS load_main_exe( UNICODE_STRING *nt_name, USHORT load_machine, void **module )
 {
-    enum loadorder loadorder = get_load_order( nt_name, NULL, 0 );
     unsigned int status;
     SIZE_T size;
     USHORT search_machine;
+    BOOL is_system_dir = is_system_dir_path( nt_name, &search_machine );
+    enum loadorder loadorder = get_load_order( nt_name, is_system_dir, NULL );
 
     status = open_main_image( nt_name, module, &main_image_info, loadorder, load_machine );
     if (status != STATUS_DLL_NOT_FOUND) return status;
 
     /* if path is in system dir, we can load the builtin even if the file itself doesn't exist */
-    if (loadorder != LO_NATIVE && is_builtin_path( nt_name, &search_machine ))
+    if (loadorder != LO_NATIVE && is_prefix_bootstrap && is_system_dir)
         status = find_builtin_dll( nt_name, NULL, module, &size, &main_image_info, 0, 0,
                                    search_machine, load_machine, FALSE, 0 );
     return status;
@@ -1861,7 +1855,6 @@ static void start_main_thread(void)
 {
     TEB *teb = virtual_alloc_first_teb();
 
-    signal_init_threading();
     dbg_init();
     startup_info_size = server_init_process();
     virtual_map_user_shared_data();
@@ -1878,128 +1871,6 @@ static void start_main_thread(void)
     server_init_process_done();
 }
 
-#ifdef __ANDROID__
-
-#ifndef WINE_JAVA_CLASS
-#define WINE_JAVA_CLASS "org/winehq/wine/WineActivity"
-#endif
-
-DECLSPEC_EXPORT JavaVM *java_vm = NULL;
-DECLSPEC_EXPORT jobject java_object = 0;
-DECLSPEC_EXPORT unsigned short java_gdt_sel = 0;
-
-/* main Wine initialisation */
-static jstring wine_init_jni( JNIEnv *env, jobject obj, jobjectArray cmdline, jobjectArray environment )
-{
-    char **argv;
-    char *str;
-    char error[1024];
-    int i, argc, length;
-
-    /* get the command line array */
-
-    argc = (*env)->GetArrayLength( env, cmdline );
-    for (i = length = 0; i < argc; i++)
-    {
-        jobject str_obj = (*env)->GetObjectArrayElement( env, cmdline, i );
-        length += (*env)->GetStringUTFLength( env, str_obj ) + 1;
-    }
-
-    argv = malloc( (argc + 1) * sizeof(*argv) + length );
-    str = (char *)(argv + argc + 1);
-    for (i = 0; i < argc; i++)
-    {
-        jobject str_obj = (*env)->GetObjectArrayElement( env, cmdline, i );
-        length = (*env)->GetStringUTFLength( env, str_obj );
-        (*env)->GetStringUTFRegion( env, str_obj, 0,
-                                    (*env)->GetStringLength( env, str_obj ), str );
-        argv[i] = str;
-        str[length] = 0;
-        str += length + 1;
-    }
-    argv[argc] = NULL;
-
-    /* set the environment variables */
-
-    if (environment)
-    {
-        int count = (*env)->GetArrayLength( env, environment );
-        for (i = 0; i < count - 1; i += 2)
-        {
-            jobject var_obj = (*env)->GetObjectArrayElement( env, environment, i );
-            jobject val_obj = (*env)->GetObjectArrayElement( env, environment, i + 1 );
-            const char *var = (*env)->GetStringUTFChars( env, var_obj, NULL );
-
-            if (val_obj)
-            {
-                const char *val = (*env)->GetStringUTFChars( env, val_obj, NULL );
-                setenv( var, val, 1 );
-                if (!strcmp( var, "LD_LIBRARY_PATH" ))
-                {
-                    void (*update_func)( const char * ) = dlsym( RTLD_DEFAULT,
-                                                                 "android_update_LD_LIBRARY_PATH" );
-                    if (update_func) update_func( val );
-                }
-                else if (!strcmp( var, "WINEDEBUGLOG" ))
-                {
-                    int fd = open( val, O_WRONLY | O_CREAT | O_APPEND, 0666 );
-                    if (fd != -1)
-                    {
-                        dup2( fd, 2 );
-                        close( fd );
-                    }
-                }
-                (*env)->ReleaseStringUTFChars( env, val_obj, val );
-            }
-            else unsetenv( var );
-
-            (*env)->ReleaseStringUTFChars( env, var_obj, var );
-        }
-    }
-
-    java_object = (*env)->NewGlobalRef( env, obj );
-
-    main_argc = argc;
-    main_argv = argv;
-
-    init_paths();
-    init_environment();
-
-#ifdef __i386__
-    {
-        unsigned short java_fs;
-        __asm__( "mov %%fs,%0" : "=r" (java_fs) );
-        if (!(java_fs & 4)) java_gdt_sel = java_fs;
-        __asm__( "mov %0,%%fs" :: "r" (0) );
-        start_main_thread();
-        __asm__( "mov %0,%%fs" :: "r" (java_fs) );
-    }
-#else
-    start_main_thread();
-#endif
-    return (*env)->NewStringUTF( env, error );
-}
-
-jint JNI_OnLoad( JavaVM *vm, void *reserved )
-{
-    static const JNINativeMethod method =
-    {
-        "wine_init", "([Ljava/lang/String;[Ljava/lang/String;)Ljava/lang/String;", wine_init_jni
-    };
-
-    JNIEnv *env;
-    jclass class;
-
-    virtual_init();
-
-    java_vm = vm;
-    if ((*vm)->AttachCurrentThread( vm, &env, NULL ) != JNI_OK) return JNI_ERR;
-    if (!(class = (*env)->FindClass( env, WINE_JAVA_CLASS ))) return JNI_ERR;
-    (*env)->RegisterNatives( env, class, &method, 1 );
-    return JNI_VERSION_1_6;
-}
-
-#endif  /* __ANDROID__ */
 
 #ifdef __APPLE__
 static void *apple_wine_thread( void *arg )

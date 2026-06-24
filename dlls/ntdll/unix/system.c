@@ -1966,6 +1966,7 @@ static DWORD get_core_id_regs_arm64( struct smbios_wine_id_reg_value_arm64 *regs
         regs[regidx++] = (struct smbios_wine_id_reg_value_arm64){ 0x4000, value };
     }
 
+#ifdef HWCAP_CPUID
     if (!(getauxval(AT_HWCAP) & HWCAP_CPUID))
     {
         WARN( "Skipping ID register population as kernel is missing emulation support.\n" );
@@ -1998,6 +1999,9 @@ static DWORD get_core_id_regs_arm64( struct smbios_wine_id_reg_value_arm64 *regs
     READ_ID_REG( 0x5801 ); /* CTR_EL0 */
     /* Windows exposes SCTLR_EL1, ACTLR_EL1, TTBR0_EL1 and MAIR_EL1, but these are inaccessible under
      * linux so leave them unpopulated. */
+#else
+    WARN( "Skipping ID register population as HWCAP_CPUID isn't supported.\n" );
+#endif
 
 #undef READ_ID_REG
 #undef STR
@@ -3218,8 +3222,7 @@ C_ASSERT( sizeof(struct process_info) <= sizeof(SYSTEM_PROCESS_INFORMATION) );
             {
                 ti = (SYSTEM_EXTENDED_THREAD_INFORMATION *)((BYTE *)nt_process->ti + j * thread_info_size);
                 ti->ThreadInfo.CreateTime.QuadPart = server_thread->start_time;
-                ti->ThreadInfo.ClientId.UniqueProcess = UlongToHandle(server_process->pid);
-                ti->ThreadInfo.ClientId.UniqueThread = UlongToHandle(server_thread->tid);
+                ti->ThreadInfo.ClientId = make_client_id( server_process->pid, server_thread->tid );
                 ti->ThreadInfo.dwCurrentPriority = server_thread->current_priority;
                 ti->ThreadInfo.dwBasePriority = server_thread->base_priority;
                 get_thread_times( server_process->unix_pid, server_thread->unix_tid,
@@ -4091,11 +4094,14 @@ NTSTATUS WINAPI NtQuerySystemInformationEx( SYSTEM_INFORMATION_CLASS class,
     }
 
     case SystemSupportedProcessorArchitectures:
+    case SystemSupportedProcessorArchitectures2:
     {
         SYSTEM_SUPPORTED_PROCESSOR_ARCHITECTURES_INFORMATION *machines = info;
         HANDLE process;
         ULONG i;
         USHORT machine = 0;
+        USHORT machines_to_return[8];
+        unsigned int machines_to_return_count = 0;
 
         if (!query || query_len < sizeof(HANDLE)) return STATUS_INVALID_PARAMETER;
         process = *(HANDLE *)query;
@@ -4110,7 +4116,18 @@ NTSTATUS WINAPI NtQuerySystemInformationEx( SYSTEM_INFORMATION_CLASS class,
             if (ret) return ret;
         }
 
-        len = (supported_machines_count + 1) * sizeof(*machines);
+        for (i = 0; i < supported_machines_count; i++)
+        {
+#ifdef __aarch64__
+            if (class == SystemSupportedProcessorArchitectures &&
+                supported_machines[i] == IMAGE_FILE_MACHINE_AMD64)
+                continue;
+#endif
+            machines_to_return[machines_to_return_count] = supported_machines[i];
+            machines_to_return_count++;
+        }
+
+        len = (machines_to_return_count + 1) * sizeof(*machines);
         if (size < len)
         {
             ret = STATUS_BUFFER_TOO_SMALL;
@@ -4119,20 +4136,23 @@ NTSTATUS WINAPI NtQuerySystemInformationEx( SYSTEM_INFORMATION_CLASS class,
         memset( machines, 0, len );
 
         /* native machine */
-        machines[0].Machine = supported_machines[0];
+        machines[0].Machine = machines_to_return[0];
         machines[0].UserMode = 1;
         machines[0].KernelMode = 1;
         machines[0].Native = 1;
-        machines[0].Process = (supported_machines[0] == machine || is_machine_64bit( machine ));
+        machines[0].Process = (machines_to_return[0] == machine ||
+                               (class == SystemSupportedProcessorArchitectures &&
+                                machine == IMAGE_FILE_MACHINE_AMD64));
         machines[0].WoW64Container = 0;
         machines[0].ReservedZero0 = 0;
-        /* wow64 machines */
-        for (i = 1; i < supported_machines_count; i++)
+        /* other machines */
+        for (i = 1; i < machines_to_return_count; i++)
         {
-            machines[i].Machine = supported_machines[i];
+            machines[i].Machine = machines_to_return[i];
             machines[i].UserMode = 1;
-            machines[i].Process = supported_machines[i] == machine;
-            machines[i].WoW64Container = 1;
+            machines[i].Process = machines_to_return[i] == machine;
+            if (!is_machine_64bit( machines_to_return[i] ))
+                machines[i].WoW64Container = 1;
         }
         ret = STATUS_SUCCESS;
         break;

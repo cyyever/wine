@@ -48,6 +48,7 @@ static const struct user_driver_funcs waylanddrv_funcs =
     .pSetWindowStyle = WAYLAND_SetWindowStyle,
     .pSetWindowText = WAYLAND_SetWindowText,
     .pSysCommand = WAYLAND_SysCommand,
+    .pUpdateLayeredWindow = WAYLAND_UpdateLayeredWindow,
     .pUpdateDisplayDevices = WAYLAND_UpdateDisplayDevices,
     .pWindowMessage = WAYLAND_WindowMessage,
     .pWindowPosChanged = WAYLAND_WindowPosChanged,
@@ -66,7 +67,7 @@ static void wayland_init_process_name(void)
     DWORD utf8_size;
     int i;
 
-    appname = NtCurrentTeb()->Peb->ProcessParameters->ImagePathName.Buffer;
+    appname = RtlGetCurrentPeb()->ProcessParameters->ImagePathName.Buffer;
     if ((p = wcsrchr(appname, '/'))) appname = p + 1;
     if ((p = wcsrchr(appname, '\\'))) appname = p + 1;
     appname_len = lstrlenW(appname);

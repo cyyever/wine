@@ -209,19 +209,31 @@ sub testThrow
     next
     call ok(y = 1, "y = " & y)
     call ok(x = 6, "x = " & x)
-    call todo_wine_ok(Err.Number = VB_E_FORLOOPNOTINITIALIZED, "Err.Number = " & Err.Number)
+    call ok(Err.Number = VB_E_FORLOOPNOTINITIALIZED, "Err.Number = " & Err.Number)
 
     Err.clear()
     y = 0
     x = 6
     for x = 100 to throwInt(E_TESTERROR)
         call ok(Err.Number = E_TESTERROR, "Err.Number = " & Err.Number)
-        call todo_wine_ok(x = 6, "x = " & x)
+        call ok(x = 6, "x = " & x)
         y = y+1
     next
     call ok(y = 1, "y = " & y)
-    call todo_wine_ok(x = 6, "x = " & x)
-    call todo_wine_ok(Err.Number = VB_E_FORLOOPNOTINITIALIZED, "Err.Number = " & Err.Number)
+    call ok(x = 6, "x = " & x)
+    call ok(Err.Number = VB_E_FORLOOPNOTINITIALIZED, "Err.Number = " & Err.Number)
+
+    Err.clear()
+    y = 0
+    x = 6
+    for x = 100 to 200 step throwInt(E_TESTERROR)
+        call ok(Err.Number = E_TESTERROR, "Err.Number = " & Err.Number)
+        call ok(x = 6, "x = " & x)
+        y = y+1
+    next
+    call ok(y = 1, "y = " & y)
+    call ok(x = 6, "x = " & x)
+    call ok(Err.Number = VB_E_FORLOOPNOTINITIALIZED, "Err.Number = " & Err.Number)
 
     select case throwInt(E_TESTERROR)
     case true
@@ -480,6 +492,22 @@ end sub
 
 call testDivisionByZero
 
+sub testUndefinedVarDescription()
+    on error resume next
+
+    Err.Clear()
+    ExecuteGlobal "Option Explicit" & vbCrLf & "Dim q : q = undefinedReadVar"
+    call ok(Err.Number = 500, "read undefined Err.Number = " & Err.Number)
+    call ok(Err.Description = "Variable is undefined", "read undefined Err.Description = " & Err.Description)
+
+    Err.Clear()
+    ExecuteGlobal "Option Explicit" & vbCrLf & "undefinedAssignVar = 1"
+    call ok(Err.Number = 500, "assign undefined Err.Number = " & Err.Number)
+    call ok(Err.Description = "Variable is undefined", "assign undefined Err.Description = " & Err.Description)
+end sub
+
+call testUndefinedVarDescription
+
 on error resume next
 
 throwWithDesc
@@ -487,32 +515,24 @@ ok err.number = &hdeadbeef&, "err.number = " & hex(err.number)
 ok err.description = "test", "err.description = " & err.description
 ok err.helpcontext = 10, "err.helpcontext = " & err.helpcontext
 ok err.helpfile = "test.chm", "err.helpfile = " & err.helpfile
+err.clear
 
 throwWithDesc = 1
 ok err.number = &hdeadbeef&, "err.number = " & hex(err.number)
 ok err.description = "test", "err.description = " & err.description
 ok err.helpcontext = 10, "err.helpcontext = " & err.helpcontext
 ok err.helpfile = "test.chm", "err.helpfile = " & err.helpfile
-
-on error goto 0
-
-' indexed assign to non-array variable should give type mismatch
-dim z
-z = 42
-on error resume next
-z(0) = 1
-ok err.number = 13, "err.number = " & err.number
 err.clear
 
 ' Option Explicit: assigning to undeclared variable should give error 500
 undeclaredVar = 1
-todo_wine_ok err.number = 500, "err.number = " & err.number
+ok err.number = 500, "err.number = " & err.number
 err.clear
 
 ' Option Explicit: reading undeclared variable should give error 500
 dim unused
 unused = undeclaredVar2
-todo_wine_ok err.number = 500, "err.number = " & err.number
+ok err.number = 500, "err.number = " & err.number
 on error goto 0
 
 sub testObjectRequired()

@@ -1506,7 +1506,7 @@ static HRESULT swapchain_create_texture(struct wined3d_swapchain *swapchain,
         texture_desc.access = WINED3D_RESOURCE_ACCESS_CPU;
     else
         texture_desc.access = WINED3D_RESOURCE_ACCESS_GPU;
-    if (!depth && (swapchain_desc->flags & WINED3D_SWAPCHAIN_LOCKABLE_BACKBUFFER))
+    if (!depth && (swapchain_desc->flags & WINED3D_SWAPCHAIN_LOCKABLE_BACKBUFFER) && !swapchain_desc->multisample_type)
         texture_desc.access |= WINED3D_RESOURCE_ACCESS_MAP_R | WINED3D_RESOURCE_ACCESS_MAP_W;
     texture_desc.width = swapchain_desc->backbuffer_width;
     texture_desc.height = swapchain_desc->backbuffer_height;
@@ -1536,6 +1536,16 @@ static HRESULT swapchain_create_texture(struct wined3d_swapchain *swapchain,
     return S_OK;
 }
 
+HRESULT wined3d_swapchain_desc_validate_flags(const struct wined3d_swapchain_desc *desc)
+{
+    /* d3d8 allows the lockable flag even though the backbuffer is not lockable. */
+    if ((desc->flags & WINED3D_SWAPCHAIN_LOCKABLE_BACKBUFFER) && desc->multisample_type
+            && !(desc->flags & WINED3D_SWAPCHAIN_ALLOW_MS_LOCKABLE_BACKBUFFER))
+        return WINED3DERR_INVALIDCALL;
+
+    return WINED3D_OK;
+}
+
 static HRESULT wined3d_swapchain_init(struct wined3d_swapchain *swapchain, struct wined3d_device *device,
         const struct wined3d_swapchain_desc *desc, struct wined3d_swapchain_state_parent *state_parent,
         void *parent, const struct wined3d_parent_ops *parent_ops,
@@ -1549,16 +1559,13 @@ static HRESULT wined3d_swapchain_init(struct wined3d_swapchain *swapchain, struc
 
     wined3d_mutex_lock();
 
-    if (desc->backbuffer_count > 1)
-    {
-        FIXME("The application requested more than one back buffer, this is not properly supported.\n"
-                "Please configure the application to use double buffering (1 back buffer) if possible.\n");
-    }
-
     if (desc->swap_effect != WINED3D_SWAP_EFFECT_DISCARD
             && desc->swap_effect != WINED3D_SWAP_EFFECT_SEQUENTIAL
             && desc->swap_effect != WINED3D_SWAP_EFFECT_COPY)
         FIXME("Unimplemented swap effect %#x.\n", desc->swap_effect);
+
+    if (FAILED(hr = wined3d_swapchain_desc_validate_flags(desc)))
+        return hr;
 
     window = desc->device_window ? desc->device_window : device->create_parms.focus_window;
     TRACE("Using target window %p.\n", window);
